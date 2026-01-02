@@ -1,60 +1,220 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="light">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
-    </style>
+    <title>QR Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        // Tailwind Dark Mode Config
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#6366f1', // Indigo color for buttons
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @media print {
 
-    <link rel="stylesheet" href="style.css">
-    <title>My QR Generator</title>
+            /* Hide absolutely everything */
+            body,
+            html {
+                visibility: hidden;
+                height: 100%;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: hidden;
+            }
+
+            /* Show only the print area */
+            #print-area,
+            #print-area * {
+                visibility: visible;
+            }
+
+            /* Position the print area perfectly on the first page */
+            #print-area {
+                position: fixed;
+                /* Fixed bypasses body height issues */
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                background-color: white !important;
+            }
+
+            /* Ensure the QR code is a good size for PDF */
+            #modal-qr-img {
+                width: 350px !important;
+                height: 350px !important;
+            }
+
+            /* Remove browser headers (date, URL) */
+            @page {
+                margin: 0;
+            }
+        }
+    </style>
 </head>
 
-<body>
-    <header>
-        <nav>
-            <div class="nav-title">
-                <h2>My QR Generator</h2>
+<body class="bg-[#fafafa] dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 transition-colors duration-500 font-sans">
+
+    <div class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-64 bg-indigo-500/10 blur-[120px] -z-10"></div>
+
+    <header
+        class="sticky top-0 z-50 border-b border-zinc-200/50 dark:border-zinc-800/50 backdrop-blur-xl bg-white/70 dark:bg-[#09090b]/70">
+        <nav class="max-w-4xl mx-auto flex justify-between items-center px-6 py-4">
+            <div class="flex items-center gap-2">
+                <div
+                    class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <i class="fa-solid fa-qrcode text-white text-xs"></i>
+                </div>
+                <h2 class="text-lg font-bold tracking-tight">QR<span class="text-indigo-600">Studio</span></h2>
             </div>
-            <div class="search">
-                <a href="">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <span>Search</span>
-                </a>
+
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSearch()"
+                    class="p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all">
+                    <i class="fa-solid fa-magnifying-glass text-sm"></i>
+                </button>
+                <button id="theme-toggle"
+                    class="p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all">
+                    <i id="theme-icon" class="fa-solid fa-moon"></i>
+                </button>
             </div>
         </nav>
     </header>
-    <main>
-        <div class="container">
-            <div class="title">
-                <h3>QR Code Title</h3>
-                <input placeholder="Enter Title" type="text" id="title" name="title" required>
-            </div>
-            <div class="link">
-                <h3>Content to Encode</h3>
-                <input placeholder="Enter Link" type="text" id="qrText" name="link" required autocapitalize="none"
-                    autocomplete="off" autocorrect="off" spellcheck="false">
-            </div>
-            <div class="imgBox">
-                <img src="" id="qrImg">
-            </div>
-            <div class="button">
-                <button onclick="generateQR()">Generate</button>
+
+    <main class="max-w-2xl mx-auto px-6 py-16">
+        <div id="search-bar"
+            class="hidden sticky top-[73px] z-40 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 p-4 transition-all animate-in slide-in-from-top duration-300">
+            <div class="max-w-2xl mx-auto relative">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"></i>
+                <input type="text" id="searchInput" oninput="handleSearch(this.value)" placeholder="Search by title..."
+                    class="w-full pl-11 pr-4 py-3 bg-zinc-100 dark:bg-zinc-900 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
             </div>
         </div>
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-extrabold mb-3 tracking-tight">Create in seconds.</h1>
+            <p class="text-zinc-500 dark:text-zinc-400">Generate high-quality QR codes for your brand.</p>
+        </div>
+
+        <div
+            class="bg-white dark:bg-[#121214] p-10 rounded-[32px] border border-zinc-200 dark:border-zinc-800 shadow-2xl shadow-zinc-200/50 dark:shadow-none mb-16">
+            <div class="space-y-6">
+                <div class="group">
+                    <label class="text-[13px] font-medium text-zinc-400 mb-2 block ml-1">Label</label>
+                    <input id="title" type="text" placeholder="Work Website..."
+                        class="w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-4 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-zinc-400">
+                </div>
+
+                <div class="group">
+                    <label class="text-[13px] font-medium text-zinc-400 mb-2 block ml-1">Destination URL</label>
+                    <input id="qrText" type="text" placeholder="https://..."
+                        class="w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-4 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-zinc-400">
+                </div>
+
+                <button onclick="generateQR()"
+                    class="relative group w-full py-4 overflow-hidden bg-zinc-900 dark:bg-indigo-600 text-white font-bold rounded-2xl transition-all active:scale-[0.98] shadow-xl shadow-indigo-500/20">
+                    <div
+                        class="absolute inset-0 w-1/2 h-full bg-white/10 skew-x-[-25deg] -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]">
+                    </div>
+
+                    <span class="relative flex items-center justify-center gap-2">
+                        <i
+                            class="fa-solid fa-wand-magic-sparkles text-indigo-400 group-hover:text-white transition-colors"></i>
+                        Generate QR
+                    </span>
+                </button>
+                <script>
+                    tailwind.config = {
+                        darkMode: 'class',
+                        theme: {
+                            extend: {
+                                keyframes: {
+                                    shimmer: {
+                                        '100%': { transform: 'translateX(300%)' },
+                                    }
+                                }
+                            }
+                        }
+                    }
+                </script>
+            </div>
+        </div>
+
+        <div id="recent-qr-container" class="space-y-4">
+        </div>
     </main>
-    <footer>
-        <div class="footer-content">
-            <p>© 2025 Suchak. All rights reserved.</p>
+
+    <footer
+        class="mt-20 border-t border-zinc-200/50 dark:border-zinc-800/50 bg-white/70 dark:bg-[#09090b]/70 backdrop-blur-md">
+        <div class="max-w-4xl mx-auto px-6 py-10">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="order-2 md:order-1">
+                    <p class="text-zinc-500 dark:text-zinc-400 text-sm tracking-tight font-medium">
+                        &copy; 2026 <span class="text-zinc-900 dark:text-white">Ahnaf Tajwar Suchak</span>. All rights
+                        reserved.
+                    </p>
+                </div>
+
+                <div class="flex items-center space-x-2 order-1 md:order-2">
+                    <a target="_blank" href="https://github.com/atsuchak"
+                        class="p-2.5 rounded-xl text-zinc-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all duration-300">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22">
+                            </path>
+                        </svg>
+                    </a>
+                    <a target="_blank" href="https://www.linkedin.com/in/atsuchak/"
+                        class="p-2.5 rounded-xl text-zinc-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all duration-300">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z">
+                            </path>
+                            <rect x="2" y="9" width="4" height="12"></rect>
+                            <circle cx="4" cy="4" r="2"></circle>
+                        </svg>
+                    </a>
+                    <a target="_blank" href="mailto:ahnaftajwarsuchak@gmail.com"
+                        class="p-2.5 rounded-xl text-zinc-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all duration-300">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z">
+                            </path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
+                    </a>
+                    <a target="_blank" href="https://atsuchak.me"
+                        class="p-2.5 rounded-xl text-zinc-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all duration-300">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                            <path
+                                d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+                            </path>
+                        </svg>
+                    </a>
+                </div>
+            </div>
         </div>
     </footer>
 
     <script src="script.js"></script>
-
 </body>
 
 </html>
